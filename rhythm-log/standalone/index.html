@@ -64,7 +64,7 @@ button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 .saved{font-size:.8rem;color:var(--muted)}
 
 /* inputs */
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:end}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .field input{height:48px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 12px;width:100%}
 textarea{width:100%;min-height:84px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:10px 12px;resize:vertical}
@@ -148,6 +148,8 @@ table.tg{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numer
 .tabs button{border:0;background:none;padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:.72rem;color:var(--muted);min-height:56px}
 .tabs button[aria-current="true"]{color:var(--accent);font-weight:600}
 .tabs svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.auto{font-style:normal;text-transform:none;letter-spacing:0;margin-left:8px;color:var(--accent);font-weight:600;font-size:.74rem}
+.hk{font-size:.88rem;color:var(--ink2)}
 .tip{background:var(--soft);border-radius:12px;padding:12px;font-size:.88rem;color:var(--ink2)}
 @media (prefers-reduced-motion:no-preference){.seg button,.chip,.day{transition:background .12s,color .12s}}
 </style>
@@ -274,6 +276,8 @@ function allTags(kind){
 }
 
 /* ---------- views ---------- */
+function lab(e,f,t){return '<span class="label">'+t+((e.auto||[]).indexOf(f)>-1?'<em class="auto">from Health</em>':'')+'</span>'}
+function unauto(e,f){if(e.auto){e.auto=e.auto.filter(function(x){return x!==f});if(!e.auto.length)delete e.auto}}
 function seg(f,val){
   var L=SCALES[f];
   var b='';for(var n=1;n<=5;n++)b+='<button type="button" role="radio" aria-checked="'+(val===n)+'" data-f="'+f+'" data-v="'+n+'" class="'+(val===n?'on':'')+'">'+n+'</button>';
@@ -293,12 +297,13 @@ function vToday(){
     '<div class="nav"><button class="icon-btn" id="prev" aria-label="Previous day">‹</button><button class="icon-btn" id="next" aria-label="Next day"'+(isToday?' disabled style="opacity:.35"':'')+'>›</button></div></div>'+
     '<div class="sub">'+(dn!=null?'<span class="pill">Day '+(dn>=0?'+':'')+dn+' since transplant</span>':'<span></span>')+'<span class="saved" id="saved" aria-live="polite">'+savedText()+'</span></div>'+
     '<section class="card"><h2>Last night&rsquo;s sleep</h2>'+
-      '<div class="row2"><label class="field"><span class="label">Hours slept</span><input id="sh" inputmode="decimal" placeholder="e.g. 6.5" value="'+(e.sh!=null?e.sh:'')+'"></label>'+
-      '<label class="field"><span class="label">Watch sleep score</span><input id="ss" inputmode="numeric" placeholder="0–100" value="'+(e.ss!=null?e.ss:'')+'"></label></div>'+
+      '<div class="row2"><label class="field">'+lab(e,'sh','Hours slept')+'<input id="sh" inputmode="decimal" placeholder="e.g. 6.5" value="'+(e.sh!=null?e.sh:'')+'"></label>'+
+      '<label class="field">'+lab(e,'ss','Watch sleep score')+'<input id="ss" inputmode="numeric" placeholder="0–100" value="'+(e.ss!=null?e.ss:'')+'"></label></div>'+
       seg('sq',e.sq)+'</section>'+
     '<section class="card"><h2>Movement</h2>'+
-      '<div class="row2"><label class="field"><span class="label">Steps</span><input id="stp" inputmode="numeric" placeholder="e.g. 4500" value="'+(e.stp!=null?e.stp:'')+'"></label>'+
-      '<label class="field"><span class="label">Exercise minutes</span><input id="exm" inputmode="numeric" placeholder="0" value="'+(e.exm!=null?e.exm:'')+'"></label></div>'+
+      '<div class="row2"><label class="field">'+lab(e,'stp','Steps')+'<input id="stp" inputmode="numeric" placeholder="e.g. 4500" value="'+(e.stp!=null?e.stp:'')+'"></label>'+
+      '<label class="field">'+lab(e,'exm','Exercise minutes')+'<input id="exm" inputmode="numeric" placeholder="0" value="'+(e.exm!=null?e.exm:'')+'"></label></div>'+
+      (e.rhr!=null||e.hrv!=null?'<div class="hk">From Apple Watch: '+[e.rhr!=null?'resting heart rate '+e.rhr:null,e.hrv!=null?'HRV '+e.hrv+' ms':null].filter(Boolean).join(' · ')+'</div>':'')+
       '<div class="metric"><span class="label">Exercise effort</span><div class="chips" id="efs">'+['Light','Moderate','Hard'].map(function(n,i){var on=e.ef===i+1;return '<button type="button" class="chip'+(on?' on':'')+'" aria-pressed="'+on+'" data-ef="'+(i+1)+'">'+n+'</button>'}).join('')+'</div></div></section>'+
     '<section class="card"><h2>How I feel</h2>'+seg('en',e.en)+seg('mo',e.mo)+seg('cl',e.cl)+'</section>'+
     '<section class="card"><h2>What I did</h2><div class="chips" id="acts">'+chips('act',e.act||[])+'</div>'+
@@ -529,6 +534,10 @@ function vMore(){
   var st=state.settings;
   return '<div class="top"><h1>More</h1></div>'+
    '<section class="card"><h2>Transplant date</h2><label class="field"><span class="label">Stem cell &ldquo;birthday&rdquo;</span><input type="date" id="tdate" value="'+esc(st.transplant||'')+'"></label><div class="muted small">Shows the day count on the Today screen.</div></section>'+
+   '<section class="card"><h2>Apple Health sync</h2><div class="muted">Steps, exercise minutes, hours slept and heart numbers can arrive on their own from an iPhone Shortcut. Anything she types by hand is never overwritten.</div>'+
+   '<label class="field"><span class="label">Sync code</span><input id="tok" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Paste the code once" value="'+esc(getToken())+'"></label>'+
+   '<div class="addrow"><button class="btn primary" id="savetok" type="button">Save code</button><button class="btn" id="syncnow" type="button">Sync now</button></div>'+
+   '<div class="muted small" id="syncmsg" aria-live="polite">'+syncStatus()+'</div><a href="health-setup.html">Shortcut setup steps</a></section>'+
    '<section class="card"><h2>Export for appointments</h2><div class="muted">Saves every logged day as a spreadsheet file she can share with her care team.</div><button class="btn primary" id="export" type="button">Export CSV</button></section>'+
    '<section class="card"><h2>Back up and restore</h2><div>Her entries are stored on this phone only, and nobody else can see them. Save a backup every week or two, and after any phone change, so nothing is lost.</div><div class="addrow"><button class="btn primary" id="backup" type="button">Save backup</button><button class="btn" id="restorebtn" type="button">Restore backup</button></div><input type="file" id="restore" accept=".json,application/json" hidden><div class="muted small" id="expmsg" aria-live="polite"></div></section>'+
    '<section class="card"><h2>Apple Watch sleep</h2><div>Open the Sleep or Health app, read last night&rsquo;s score and hours, and type them into the sleep card on the Today screen. A web page cannot read Apple Health automatically, so steps and workouts are typed in too (Fitness or Health app).</div></section>'+
@@ -580,6 +589,34 @@ function bindCharts(){
   });
 }
 
+var TOKEN_KEY='rhythmlog.token',SYNC_KEY='rhythmlog.lastsync',HF=['stp','exm','sh','ss','rhr','hrv'];
+function getToken(){try{return localStorage.getItem(TOKEN_KEY)||''}catch(e){return ''}}
+function syncStatus(){var t='';try{t=localStorage.getItem(SYNC_KEY)||''}catch(e){}return getToken()?(t?'Last synced '+new Date(+t).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'.':'Not synced yet.'):'No sync code saved on this phone.'}
+function syncMsg(t){var el=document.getElementById('syncmsg');if(el)el.textContent=t}
+async function healthSync(){
+  var tk=getToken();if(!tk)return;
+  try{
+    var r=await fetch('/api/health',{headers:{Authorization:'Bearer '+tk},cache:'no-store'});
+    if(r.status===401){syncMsg('That sync code was not accepted.');return}
+    if(r.status===503){syncMsg('The sync service is not set up yet (INGEST_TOKEN is missing in Cloudflare).');return}
+    if(!r.ok){syncMsg('Sync is unavailable right now.');return}
+    var j=await r.json(),n=0,days=j.days||{};
+    Object.keys(days).forEach(function(k){
+      var h=days[k],e=Object.assign({},state.days[k]||{}),auto=(e.auto||[]).slice(),ch=false;
+      HF.forEach(function(f){
+        if(h[f]==null)return;
+        if(e[f]==null||auto.indexOf(f)>-1){
+          if(e[f]!==h[f]){e[f]=h[f];ch=true}
+          if(auto.indexOf(f)<0){auto.push(f);ch=true}
+        }
+      });
+      if(ch){e.auto=auto;e.u=Date.now();state.days[k]=e;n++}
+    });
+    try{localStorage.setItem(SYNC_KEY,String(Date.now()))}catch(e){}
+    if(n){saveLocal();var a=document.activeElement;if(!(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA')))render()}
+    syncMsg(n?'Synced. Updated '+n+' day'+(n===1?'':'s')+'.':'Synced. Nothing new.');
+  }catch(e){syncMsg('Could not reach the sync service. Check the connection.')}
+}
 function csvCell(s){s=String(s==null?'':s);return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
 async function saveFile(name,text,type){
   var msg=document.getElementById('expmsg');
@@ -594,9 +631,9 @@ async function saveFile(name,text,type){
   }catch(e){msg.textContent='Could not save the file on this device.'}
 }
 function doExport(){
-  var rows=[['date','sleep_hours','watch_sleep_score','sleep_quality','steps','exercise_minutes','exercise_effort','energy','mood','clear_head','activities','symptoms','notes']];
+  var rows=[['date','sleep_hours','watch_sleep_score','sleep_quality','steps','exercise_minutes','exercise_effort','resting_hr','hrv_ms','energy','mood','clear_head','activities','symptoms','notes']];
   Object.keys(state.days).sort().forEach(function(k){var e=state.days[k];
-    rows.push([k,e.sh,e.ss,e.sq,e.stp,e.exm,e.ef?['Light','Moderate','Hard'][e.ef-1]:'',e.en,e.mo,e.cl,(e.act||[]).join('; '),(e.sym||[]).join('; '),e.note]);});
+    rows.push([k,e.sh,e.ss,e.sq,e.stp,e.exm,e.ef?['Light','Moderate','Hard'][e.ef-1]:'',e.rhr,e.hrv,e.en,e.mo,e.cl,(e.act||[]).join('; '),(e.sym||[]).join('; '),e.note]);});
   saveFile('rhythm-log-'+today+'.csv',rows.map(function(r){return r.map(csvCell).join(',')}).join('\n'),'text/csv');
 }
 function doBackup(){saveFile('rhythm-log-backup-'+today+'.json',JSON.stringify({app:'rhythmlog',days:state.days,settings:state.settings}),'application/json')}
@@ -637,6 +674,8 @@ document.addEventListener('click',function(ev){
     var bs=t.parentNode.querySelectorAll('button');
     for(var j=0;j<bs.length;j++){var o=nev!=null&&+bs[j].dataset.ef===nev;bs[j].classList.toggle('on',o);bs[j].setAttribute('aria-pressed',o)}
     return}
+  if(t.id==='savetok'){var v=document.getElementById('tok').value.trim();try{if(v)localStorage.setItem(TOKEN_KEY,v);else localStorage.removeItem(TOKEN_KEY)}catch(e){}syncMsg(v?'Saved. Syncing…':'Code removed.');if(v)healthSync();return}
+  if(t.id==='syncnow'){if(!getToken()){syncMsg('Save the sync code first.');return}syncMsg('Syncing…');healthSync();return}
   if(t.id==='export'){doExport();return}
   if(t.id==='backup'){doBackup();return}
   if(t.id==='restorebtn'){document.getElementById('restore').click();return}
@@ -662,10 +701,10 @@ document.addEventListener('click',function(ev){
 document.addEventListener('change',function(ev){if(ev.target.id==='restore'&&ev.target.files&&ev.target.files[0]){doRestore(ev.target.files[0]);ev.target.value=''}});
 document.addEventListener('input',function(ev){
   var t=ev.target;
-  if(t.id==='sh'){var v=parseFloat(t.value.replace(',','.'));mut(function(e){if(isNaN(v)||v<0||v>24)delete e.sh;else e.sh=Math.round(v*4)/4})}
-  else if(t.id==='stp'){var sp=parseInt(t.value.replace(/[^0-9]/g,''),10);mut(function(e){if(isNaN(sp)||sp>200000)delete e.stp;else e.stp=sp})}
-  else if(t.id==='exm'){var xm=parseInt(t.value.replace(/[^0-9]/g,''),10);mut(function(e){if(isNaN(xm)||xm>1440)delete e.exm;else e.exm=xm})}
-  else if(t.id==='ss'){var s=parseInt(t.value,10);mut(function(e){if(isNaN(s)||s<0||s>100)delete e.ss;else e.ss=s})}
+  if(t.id==='sh'){var v=parseFloat(t.value.replace(',','.'));mut(function(e){unauto(e,'sh');if(isNaN(v)||v<0||v>24)delete e.sh;else e.sh=Math.round(v*4)/4})}
+  else if(t.id==='stp'){var sp=parseInt(t.value.replace(/[^0-9]/g,''),10);mut(function(e){unauto(e,'stp');if(isNaN(sp)||sp>200000)delete e.stp;else e.stp=sp})}
+  else if(t.id==='exm'){var xm=parseInt(t.value.replace(/[^0-9]/g,''),10);mut(function(e){unauto(e,'exm');if(isNaN(xm)||xm>1440)delete e.exm;else e.exm=xm})}
+  else if(t.id==='ss'){var s=parseInt(t.value,10);mut(function(e){unauto(e,'ss');if(isNaN(s)||s<0||s>100)delete e.ss;else e.ss=s})}
   else if(t.id==='note'){var txt=t.value;mut(function(e){if(txt.trim())e.note=txt;else delete e.note})}
   else if(t.id==='tdate'){var dv=t.value;mutSettings(function(s){s.transplant=dv})}
 });
@@ -676,6 +715,8 @@ document.addEventListener('keydown',function(ev){
 loadLocal();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 render();
+healthSync();
+document.addEventListener('visibilitychange',function(){if(!document.hidden)healthSync()});
 })();
 </script>
 </body>

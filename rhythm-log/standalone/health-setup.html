@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>Apple Health setup · Rhythm Log</title>
+<style>
+:root{--bg:#f2f6f6;--surface:#fff;--ink:#15282a;--ink2:#4a6061;--line:#d9e3e3;--accent:#0f766e;--soft:#e6f0ef;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1616;--surface:#142121;--ink:#e5efee;--ink2:#a6bbba;--line:#243635;--accent:#4fd1c0;--soft:#1a2c2b;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,sans-serif;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(40px + env(safe-area-inset-bottom,0px))}
+main{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem;margin:0 0 8px}
+section{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+ol,ul{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+code{background:var(--soft);padding:1px 6px;border-radius:6px;font-size:.9em;overflow-wrap:anywhere}
+table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{text-align:left;padding:6px 6px;border-top:1px solid var(--line);vertical-align:top}th{border-top:0;color:var(--ink2)}
+.note{background:var(--soft);border-radius:12px;padding:12px;color:var(--ink2);font-size:.92rem}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<a href="./">← Back to Rhythm Log</a>
+<h1>Apple Health sync</h1>
+<div class="note">A web page can't read Apple Health, so an iPhone Shortcut reads it and sends the numbers to Rhythm Log every night. Anything typed by hand in the app is never overwritten. The Shortcuts app's Health actions look a little different between iOS versions. If a step doesn't match what you see, send a screenshot and we'll adjust.</div>
+
+<section>
+<h2>Part 1: Turn on the sync (one time, on a computer or any phone)</h2>
+<ol>
+<li>In Cloudflare, open the <b>smartthings-myq</b> Worker, then <b>Settings</b>, then <b>Variables and Secrets</b>, then <b>Add</b>.</li>
+<li>Type: <b>Secret</b>. Name: <code>INGEST_TOKEN</code>. Value: a long made-up code of 20 or more characters, for example four random words with dashes. Save it and deploy if asked. Keep a copy somewhere safe.</li>
+<li>On her phone, open Rhythm Log, go to <b>More</b>, paste the same code under <b>Apple Health sync</b>, and tap <b>Save code</b>.</li>
+</ol>
+</section>
+
+<section>
+<h2>Part 2: Build the shortcut (her iPhone, Shortcuts app)</h2>
+<p>Tap <b>+</b> to make a new shortcut named <b>Send to Rhythm Log</b>, then add these actions in order:</p>
+<ol>
+<li><b>Current Date</b>, then <b>Format Date</b> with Date Format set to <b>Custom</b> and the format <code>yyyy-MM-dd</code>. Call the result <b>Today</b>.</li>
+<li><b>Find Health Samples</b>: Type <b>Steps</b>, Start Date is today. Then <b>Calculate Statistics</b>: Sum. Call it <b>Steps</b>.</li>
+<li><b>Find Health Samples</b>: Type <b>Exercise Minutes</b> (may be called Apple Exercise Time), Start Date is today. <b>Calculate Statistics</b>: Sum. Call it <b>Exercise</b>.</li>
+<li><b>Find Health Samples</b>: Type <b>Sleep</b>, End Date is today, Value is one of Asleep, Core, Deep or REM (not In Bed or Awake). <b>Calculate Statistics</b>: Sum of duration. Convert it to hours and call it <b>Sleep</b>.</li>
+<li><b>Find Health Samples</b>: Type <b>Resting Heart Rate</b>, sort by Start Date newest first, limit 1. Call it <b>RHR</b>. Do the same for <b>Heart Rate Variability</b> and call it <b>HRV</b>. These two are optional.</li>
+<li><b>Get Contents of URL</b>:
+  <ul>
+  <li>URL: <code id="u">/api/ingest</code></li>
+  <li>Method: <b>POST</b></li>
+  <li>Headers: add <code>Authorization</code> with the value <code>Bearer </code> followed by the sync code (note the space after Bearer)</li>
+  <li>Request Body: <b>JSON</b>, with these fields:
+    <table><tr><th>Key</th><th>Value</th></tr>
+    <tr><td><code>date</code></td><td>Today (text)</td></tr>
+    <tr><td><code>stp</code></td><td>Steps (number)</td></tr>
+    <tr><td><code>exm</code></td><td>Exercise (number)</td></tr>
+    <tr><td><code>sh</code></td><td>Sleep in hours (number)</td></tr>
+    <tr><td><code>rhr</code></td><td>RHR (number, optional)</td></tr>
+    <tr><td><code>hrv</code></td><td>HRV (number, optional)</td></tr></table></li>
+  </ul></li>
+<li>Run it once with the play button. The response should say <code>"ok": true</code>. Then open Rhythm Log, go to <b>More</b>, tap <b>Sync now</b>, and check that today's card shows "from Health" next to the numbers.</li>
+</ol>
+</section>
+
+<section>
+<h2>Part 3: Run it automatically</h2>
+<ol>
+<li>In Shortcuts, go to <b>Automation</b>, tap <b>+</b>, then <b>Time of Day</b>. Pick about <b>10:00 PM</b>, Daily.</li>
+<li>Choose <b>Run Shortcut</b> and select <b>Send to Rhythm Log</b>. Set it to <b>Run Immediately</b> and turn off <b>Notify When Run</b>.</li>
+</ol>
+<p>She can also run the shortcut by hand any time to push fresh numbers.</p>
+</section>
+
+<section>
+<h2>Things to check on the first few days</h2>
+<ul>
+<li><b>Steps too high?</b> Raw samples from the iPhone and the Watch can both be counted. Compare with the Health app. If the total is too high, add a filter to Find Health Samples so Source is the Apple Watch only.</li>
+<li><b>Sleep score:</b> Apple's own Sleep Score doesn't appear to be readable by Shortcuts. If a Sleep Score type shows up in the Health sample list, add it as <code>ss</code>. Otherwise she can type it in and the app keeps it.</li>
+<li><b>Nothing arrives:</b> the app's More tab shows when it last synced, and says if the code was rejected.</li>
+</ul>
+</section>
+</main>
+<script>document.getElementById('u').textContent=location.origin+'/api/ingest'</script>
+</body>
+</html>

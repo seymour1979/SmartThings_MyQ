@@ -1,5 +1,11 @@
 {
   "name": "smartthings-myq",
+  "main": "src/worker.js",
   "compatibility_date": "2026-10-01",
-  "assets": { "directory": "./rhythm-log/standalone" }
+  "assets": {
+    "directory": "./rhythm-log/standalone",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "kv_namespaces": [{ "binding": "HEALTH" }]
 }
