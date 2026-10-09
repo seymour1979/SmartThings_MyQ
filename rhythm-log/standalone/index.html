@@ -136,7 +136,7 @@ svg text{fill:var(--muted);font-size:9px;font-family:var(--font-body)}
 table.tg{width:100%;border-collapse:collapse;font-size:.88rem;font-variant-numeric:tabular-nums}
 .tg th{font-weight:600;color:var(--muted);text-align:left;font-size:.75rem;padding:4px 4px 6px}
 .tg td{padding:7px 4px;border-top:1px solid var(--line);vertical-align:middle}
-.dv{position:relative;height:16px;background:var(--bg);border-radius:4px;min-width:90px}
+.dv{position:relative;height:16px;background:var(--bg);border-radius:4px;min-width:56px}
 .dv::after{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--muted)}
 .dv b{position:absolute;top:2px;bottom:2px;border-radius:3px}
 .dv b.p{left:50%;background:var(--pos)} .dv b.n{right:50%;background:var(--neg)}
@@ -170,7 +170,7 @@ var SCALES={
 };
 var NAMES={en:'Energy',mo:'Mood',cl:'Clear head',sq:'Sleep quality'};
 var SERIES=[{k:'en',c:'--c1',d:''},{k:'mo',c:'--c2',d:'6 3'},{k:'sq',c:'--c4',d:'2 3'},{k:'cl',c:'--c3',d:'10 3 2 3'}];
-var METRICS=[['en','Energy'],['mo','Mood'],['cl','Clear head'],['sl','Sleep']];
+var METRICS=[['en','Energy'],['mo','Mood'],['cl','Clear head'],['sl','Sleep'],['mv','Steps']];
 
 function pad(n){return n<10?'0'+n:''+n}
 function keyOf(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
@@ -209,7 +209,7 @@ function setSaved(){state.savedAt=Date.now();var el=document.getElementById('sav
 function savedText(){return state.savedAt?'Saved':''}
 function logged(e){
   if(!e)return false;
-  return e.sh!=null||e.ss!=null||e.sq!=null||e.en!=null||e.mo!=null||e.cl!=null||(e.act&&e.act.length>0)||(e.sym&&e.sym.length>0)||!!e.note;
+  return e.sh!=null||e.ss!=null||e.sq!=null||e.stp!=null||e.exm!=null||e.ef!=null||e.en!=null||e.mo!=null||e.cl!=null||(e.act&&e.act.length>0)||(e.sym&&e.sym.length>0)||!!e.note;
 }
 function mut(fn){
   var e=Object.assign({},state.days[state.date]||{});
@@ -261,7 +261,8 @@ function sleepStep(e){
   if(e.sq!=null)return e.sq;
   return null;
 }
-function metricVal(e,m){if(!e)return null;if(m==='sl')return sleepStep(e);return e[m]==null?null:e[m]}
+function stepStep(e){var n=e.stp;if(n==null)return null;return n<2000?1:n<4000?2:n<6000?3:n<8000?4:5}
+function metricVal(e,m){if(!e)return null;if(m==='sl')return sleepStep(e);if(m==='mv')return stepStep(e);return e[m]==null?null:e[m]}
 function dayNum(k){
   var t=state.settings.transplant;if(!t)return null;
   var n=Math.round((parseKey(k)-parseKey(t))/86400000);
@@ -295,6 +296,10 @@ function vToday(){
       '<div class="row2"><label class="field"><span class="label">Hours slept</span><input id="sh" inputmode="decimal" placeholder="e.g. 6.5" value="'+(e.sh!=null?e.sh:'')+'"></label>'+
       '<label class="field"><span class="label">Watch sleep score</span><input id="ss" inputmode="numeric" placeholder="0–100" value="'+(e.ss!=null?e.ss:'')+'"></label></div>'+
       seg('sq',e.sq)+'</section>'+
+    '<section class="card"><h2>Movement</h2>'+
+      '<div class="row2"><label class="field"><span class="label">Steps</span><input id="stp" inputmode="numeric" placeholder="e.g. 4500" value="'+(e.stp!=null?e.stp:'')+'"></label>'+
+      '<label class="field"><span class="label">Exercise minutes</span><input id="exm" inputmode="numeric" placeholder="0" value="'+(e.exm!=null?e.exm:'')+'"></label></div>'+
+      '<div class="metric"><span class="label">Exercise effort</span><div class="chips" id="efs">'+['Light','Moderate','Hard'].map(function(n,i){var on=e.ef===i+1;return '<button type="button" class="chip'+(on?' on':'')+'" aria-pressed="'+on+'" data-ef="'+(i+1)+'">'+n+'</button>'}).join('')+'</div></div></section>'+
     '<section class="card"><h2>How I feel</h2>'+seg('en',e.en)+seg('mo',e.mo)+seg('cl',e.cl)+'</section>'+
     '<section class="card"><h2>What I did</h2><div class="chips" id="acts">'+chips('act',e.act||[])+'</div>'+
       '<div class="addrow"><input id="newact" placeholder="Add your own" maxlength="30" aria-label="Add your own activity"><button class="btn" id="addact" type="button">Add</button></div></section>'+
@@ -311,7 +316,7 @@ function vCal(){
   for(var d=1;d<=dim;d++){
     var k=ym+'-'+pad(d),e=state.days[k],v=metricVal(e,state.calM);
     var cls='day'+(v?' v'+v:(e&&logged(e)?'':' empty'))+(k===today?' today':'')+(k===state.sel?' sel':'');
-    var sub=e&&e.sh!=null?'<small>'+e.sh+'h</small>':'';
+    var sub=state.calM==='mv'?(e&&e.stp!=null?'<small>'+(e.stp>=1000?(Math.round(e.stp/100)/10)+'k':e.stp)+'</small>':''):(e&&e.sh!=null?'<small>'+e.sh+'h</small>':'');
     cells+='<button class="'+cls+'" data-k="'+k+'" aria-label="'+fmt(k,{month:'long',day:'numeric'})+(v?', '+METRICS.filter(function(x){return x[0]===state.calM})[0][1]+' '+v+' of 5':', not rated')+'">'+d+sub+'</button>';
   }
   var title=first.toLocaleDateString(undefined,{month:'long',year:'numeric'});
@@ -320,7 +325,7 @@ function vCal(){
   var leg='<div class="legend"><span>Lower</span>'+[1,2,3,4,5].map(function(n){return '<i style="background:var(--s'+n+')"></i>'}).join('')+'<span>Higher</span></div>';
   return '<div class="top"><h1>'+title+'</h1><div class="nav"><button class="icon-btn" id="mprev" aria-label="Previous month">‹</button><button class="icon-btn" id="mnext" aria-label="Next month"'+(atMax?' disabled style="opacity:.35"':'')+'>›</button></div></div>'+
     '<section class="card"><div class="metrics" role="group" aria-label="Color days by">'+mbtn+'</div><div class="cal">'+cells+'</div>'+leg+
-    (state.calM==='sl'?'<div class="muted small">Sleep colors come from hours slept: under 5, 5–6, 6–7, 7–8, 8 or more.</div>':'')+'</section>'+
+    (state.calM==='sl'?'<div class="muted small">Sleep colors come from hours slept: under 5, 5–6, 6–7, 7–8, 8 or more.</div>':'')+(state.calM==='mv'?'<div class="muted small">Step colors: under 2,000, 2–4k, 4–6k, 6–8k, 8,000 or more.</div>':'')+'</section>'+
     detailCard();
 }
 function detailCard(){
@@ -372,20 +377,26 @@ function lineChart(keys){
   s+='<line id="cross1" y1="'+CH.mt+'" y2="'+(CH.H-CH.mb)+'" stroke="var(--ink2)" stroke-width="1" style="display:none"/></svg>';
   return s;
 }
-function sleepChart(keys){
-  var n=keys.length,H=110,mb=18,mt=8,top=10;
+function barChart(id,keys,f,top,ticks,ref,aria,tf){
+  var n=keys.length,H=110,mb=18,mt=8;
   function y(h){return mt+(top-Math.min(h,top))*(H-mt-mb)/top}
-  var s='<svg viewBox="0 0 '+CH.W+' '+H+'" id="chart2" role="img" aria-label="Hours slept over the last '+n+' days">';
-  [0,5,10].forEach(function(v){s+='<line class="grid" x1="'+CH.ml+'" x2="'+(CH.W-CH.mr)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text x="'+(CH.ml-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+v+'h</text>'});
-  s+='<line x1="'+CH.ml+'" x2="'+(CH.W-CH.mr)+'" y1="'+y(7)+'" y2="'+y(7)+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/><text x="'+(CH.W-CH.mr)+'" y="'+(y(7)-3)+'" text-anchor="end">7h</text>';
+  var s='<svg viewBox="0 0 '+CH.W+' '+H+'" id="chart'+id+'" role="img" aria-label="'+aria+'">';
+  ticks.forEach(function(v){s+='<line class="grid" x1="'+CH.ml+'" x2="'+(CH.W-CH.mr)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text x="'+(CH.ml-5)+'" y="'+(y(v)+3)+'" text-anchor="end">'+tf(v)+'</text>'});
+  if(ref!=null)s+='<line x1="'+CH.ml+'" x2="'+(CH.W-CH.mr)+'" y1="'+y(ref)+'" y2="'+y(ref)+'" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 3"/><text x="'+(CH.W-CH.mr)+'" y="'+(y(ref)-3)+'" text-anchor="end">'+tf(ref)+'</text>';
   var bw=Math.max(1.5,Math.min(10,(CH.W-CH.ml-CH.mr)/n*0.65));
   keys.forEach(function(k,i){
-    var e=state.days[k];if(!e||e.sh==null)return;
-    var x=cx(i,n)-bw/2,yy=y(e.sh);
-    s+='<rect x="'+x.toFixed(1)+'" y="'+yy.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(y(0)-yy).toFixed(1)+'" rx="'+Math.min(2,bw/2)+'" style="fill:var(--c4)"/>';
+    var e=state.days[k];if(!e||e[f]==null)return;
+    var x=cx(i,n)-bw/2,yy=y(e[f]);
+    s+='<rect x="'+x.toFixed(1)+'" y="'+yy.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+(y(0)-yy).toFixed(1)+'" rx="'+Math.min(2,bw/2)+'" style="fill:var('+(f==='sh'?'--c4':'--c3')+')"/>';
   });
-  s+='<line id="cross2" y1="'+mt+'" y2="'+(H-mb)+'" stroke="var(--ink2)" stroke-width="1" style="display:none"/></svg>';
+  s+='<line id="cross'+id+'" y1="'+mt+'" y2="'+(H-mb)+'" stroke="var(--ink2)" stroke-width="1" style="display:none"/></svg>';
   return s;
+}
+function sleepChart(keys){return barChart(2,keys,'sh',10,[0,5,10],7,'Hours slept over the last '+keys.length+' days',function(v){return v+'h'})}
+function stepsChart(keys){
+  var mx=0;keys.forEach(function(k){var e=state.days[k];if(e&&e.stp>mx)mx=e.stp});
+  var top=Math.max(4000,Math.ceil(mx/2000)*2000);
+  return barChart(3,keys,'stp',top,[0,top/2,top],null,'Steps over the last '+keys.length+' days',function(v){return v>=1000?(v/1000)+'k':v});
 }
 function weekdayBars(){
   var sums=[[],[],[],[],[],[],[]];
@@ -440,7 +451,31 @@ function patterns(){
     rows.sort(function(a,b){return Math.max(Math.abs(b.same||0),Math.abs(b.next||0))-Math.max(Math.abs(a.same||0),Math.abs(a.next||0))});
     return rows.slice(0,8);
   }
-  return {ready:true,n:withEn.length,bullets:out,act:tagRows('act'),sym:tagRows('sym')};
+  function lagRow(label,test,uni){
+    var cells=[0,1,2].map(function(L){
+      var a=[],b=[];
+      ks.forEach(function(k){
+        var e=state.days[k];if(!uni(e))return;
+        var nx=state.days[addDays(k,L)];if(!nx||nx.en==null)return;
+        (test(e)?a:b).push(nx.en);
+      });
+      return a.length>=3&&b.length>=3?avg(a)-avg(b):null;
+    });
+    var n=ks.filter(function(k){var e=state.days[k];return uni(e)&&test(e)}).length;
+    return cells.some(function(c){return c!=null})?{t:label,n:n,c:cells}:null;
+  }
+  var mv=[];
+  var stv=ks.map(function(k){return state.days[k].stp}).filter(function(x){return x!=null}).sort(function(a,b){return a-b});
+  if(stv.length>=8){
+    var med=stv[Math.floor(stv.length/2)];
+    var r=lagRow('Steps '+med.toLocaleString()+'+ (her busier days)',function(e){return e.stp>=med},function(e){return e.stp!=null});
+    if(r)mv.push(r);
+  }
+  var r2=lagRow('Any exercise',function(e){return e.exm>0||e.ef>0},function(e){return true});if(r2)mv.push(r2);
+  var r3=lagRow('Light exercise',function(e){return e.ef===1},function(e){return true});if(r3)mv.push(r3);
+  var r4=lagRow('Moderate or hard exercise',function(e){return e.ef>=2},function(e){return true});if(r4)mv.push(r4);
+  var r5=lagRow('Exercise 30+ minutes',function(e){return e.exm>=30},function(e){return true});if(r5)mv.push(r5);
+  return {ready:true,n:withEn.length,bullets:out,act:tagRows('act'),sym:tagRows('sym'),mv:mv};
 }
 function dvCell(x){
   if(x==null)return '<span class="muted">–</span>';
@@ -451,6 +486,11 @@ function tagTable(title,rows){
   if(!rows.length)return '';
   return '<h3>'+title+'</h3><table class="tg"><thead><tr><th>Tag</th><th>Same day</th><th>Next day</th></tr></thead><tbody>'+
     rows.map(function(r){return '<tr><td>'+esc(r.t)+'<div class="muted small">'+r.uses+' days</div></td><td>'+dvCell(r.same)+'</td><td>'+dvCell(r.next)+'</td></tr>'}).join('')+'</tbody></table>';
+}
+function moveTable(rows){
+  if(!rows||!rows.length)return '';
+  return '<h3>Movement and energy</h3><table class="tg"><thead><tr><th>Day type</th><th>Same day</th><th>Next day</th><th>2 days later</th></tr></thead><tbody>'+
+    rows.map(function(r){return '<tr><td>'+esc(r.t)+'<div class="muted small">'+r.n+' days</div></td>'+r.c.map(function(x){return '<td>'+dvCell(x)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table>';
 }
 function vTrends(){
   var keys=rangeKeys(state.range);
@@ -471,7 +511,7 @@ function vTrends(){
    '<div><div class="label" style="margin-bottom:8px">Energy, last 12 weeks</div>'+weeksGrid()+'</div>'+
    '<div class="legend"><span>Lower</span>'+[1,2,3,4,5].map(function(n){return '<i style="background:var(--s'+n+')"></i>'}).join('')+'<span>Higher</span></div></section>'+
    '<section class="card"><h2>Day by day</h2><div class="metrics" role="group" aria-label="Range">'+rb+'</div><div class="metrics" role="group" aria-label="Lines to show">'+sb+'</div>'+
-     lineChart(keys)+'<div class="label">Hours slept</div>'+sleepChart(keys)+
+     lineChart(keys)+'<div class="label">Hours slept</div>'+sleepChart(keys)+'<div class="label">Steps</div>'+stepsChart(keys)+
      '<div class="readout" id="readout">Tap or drag across the chart to read a day.</div></section>';
   if(wd)h+='<section class="card"><h2>Average energy by weekday</h2>'+wd+'</section>';
   h+='<section class="card"><h2>Patterns so far</h2>';
@@ -479,8 +519,8 @@ function vTrends(){
     h+='<div class="muted">'+p.n+' day'+(p.n===1?'':'s')+' with energy logged. Patterns appear after about 10 days, and get more reliable after 3 or 4 weeks.</div>';
   }else{
     h+='<ul class="ins">'+p.bullets.map(function(b){return '<li>'+b+'</li>'}).join('')+'</ul>'+
-      tagTable('Activities and energy',p.act)+tagTable('Symptoms and energy',p.sym)+
-      '<div class="muted small">Numbers show how much higher (▲) or lower (▼) energy was on days with the tag compared with days without it, same day and the next day. Tags need at least 3 days of use to appear. These are patterns in her own log, not proof of cause, and a good thing to bring to appointments.</div>';
+      moveTable(p.mv)+tagTable('Activities and energy',p.act)+tagTable('Symptoms and energy',p.sym)+
+      '<div class="muted small">Numbers show how much higher (▲) or lower (▼) energy was on days with the tag compared with days without it, same day and the next day. Rows need at least 3 days on each side to appear. Movement is compared with other logged days, and the later columns look at energy 1 and 2 days after. These are patterns in her own log, not proof of cause, and a good thing to bring to appointments.</div>';
   }
   return h+'</section>';
 }
@@ -491,7 +531,7 @@ function vMore(){
    '<section class="card"><h2>Transplant date</h2><label class="field"><span class="label">Stem cell &ldquo;birthday&rdquo;</span><input type="date" id="tdate" value="'+esc(st.transplant||'')+'"></label><div class="muted small">Shows the day count on the Today screen.</div></section>'+
    '<section class="card"><h2>Export for appointments</h2><div class="muted">Saves every logged day as a spreadsheet file she can share with her care team.</div><button class="btn primary" id="export" type="button">Export CSV</button></section>'+
    '<section class="card"><h2>Back up and restore</h2><div>Her entries are stored on this phone only, and nobody else can see them. Save a backup every week or two, and after any phone change, so nothing is lost.</div><div class="addrow"><button class="btn primary" id="backup" type="button">Save backup</button><button class="btn" id="restorebtn" type="button">Restore backup</button></div><input type="file" id="restore" accept=".json,application/json" hidden><div class="muted small" id="expmsg" aria-live="polite"></div></section>'+
-   '<section class="card"><h2>Apple Watch sleep</h2><div>Open the Sleep or Health app, read last night&rsquo;s score and hours, and type them into the sleep card on the Today screen. A web page cannot read Apple Health automatically.</div></section>'+
+   '<section class="card"><h2>Apple Watch sleep</h2><div>Open the Sleep or Health app, read last night&rsquo;s score and hours, and type them into the sleep card on the Today screen. A web page cannot read Apple Health automatically, so steps and workouts are typed in too (Fitness or Health app).</div></section>'+
    '<div class="tip">Add it to the Home Screen: in Safari tap Share, then Add to Home Screen. Always open it from that icon so the phone keeps her log. Logging each evening takes about a minute, and a missed day is fine.</div>';
 }
 
@@ -516,13 +556,13 @@ function go(tab){state.tab=tab;render();window.scrollTo(0,0)}
 function bindCharts(){
   var keys=rangeKeys(state.range),n=keys.length;
   var ro=document.getElementById('readout');
-  [['chart1','cross1'],['chart2','cross2']].forEach(function(ids){
+  [['chart1','cross1'],['chart2','cross2'],['chart3','cross3']].forEach(function(ids){
     var svg=document.getElementById(ids[0]);if(!svg)return;
     function at(ev){
       var r=svg.getBoundingClientRect(),vx=(ev.clientX-r.left)/r.width*CH.W;
       var i=Math.round((vx-CH.ml)/((CH.W-CH.ml-CH.mr)/Math.max(1,n-1)));
       i=Math.max(0,Math.min(n-1,i));
-      ['cross1','cross2'].forEach(function(id){var c=document.getElementById(id);if(c){c.setAttribute('x1',cx(i,n));c.setAttribute('x2',cx(i,n));c.style.display=''}});
+      ['cross1','cross2','cross3'].forEach(function(id){var c=document.getElementById(id);if(c){c.setAttribute('x1',cx(i,n));c.setAttribute('x2',cx(i,n));c.style.display=''}});
       var k=keys[i],e=state.days[k],t='<b>'+fmt(k,{weekday:'short',month:'short',day:'numeric'})+'</b><br>';
       if(!e||!logged(e))t+='Nothing logged';
       else{
@@ -530,6 +570,8 @@ function bindCharts(){
         ['en','mo','sq','cl'].forEach(function(f){if(e[f]!=null)parts.push(NAMES[f]+' '+e[f])});
         if(e.sh!=null)parts.push(e.sh+' h slept');
         if(e.ss!=null)parts.push('score '+e.ss);
+        if(e.stp!=null)parts.push(e.stp.toLocaleString()+' steps');
+        if(e.exm)parts.push(e.exm+' min exercise'+(e.ef?' ('+['light','moderate','hard'][e.ef-1]+')':''));
         t+=parts.join(' · ')||'No ratings';
       }
       ro.innerHTML=t;
@@ -552,9 +594,9 @@ async function saveFile(name,text,type){
   }catch(e){msg.textContent='Could not save the file on this device.'}
 }
 function doExport(){
-  var rows=[['date','sleep_hours','watch_sleep_score','sleep_quality','energy','mood','clear_head','activities','symptoms','notes']];
+  var rows=[['date','sleep_hours','watch_sleep_score','sleep_quality','steps','exercise_minutes','exercise_effort','energy','mood','clear_head','activities','symptoms','notes']];
   Object.keys(state.days).sort().forEach(function(k){var e=state.days[k];
-    rows.push([k,e.sh,e.ss,e.sq,e.en,e.mo,e.cl,(e.act||[]).join('; '),(e.sym||[]).join('; '),e.note]);});
+    rows.push([k,e.sh,e.ss,e.sq,e.stp,e.exm,e.ef?['Light','Moderate','Hard'][e.ef-1]:'',e.en,e.mo,e.cl,(e.act||[]).join('; '),(e.sym||[]).join('; '),e.note]);});
   saveFile('rhythm-log-'+today+'.csv',rows.map(function(r){return r.map(csvCell).join(',')}).join('\n'),'text/csv');
 }
 function doBackup(){saveFile('rhythm-log-backup-'+today+'.json',JSON.stringify({app:'rhythmlog',days:state.days,settings:state.settings}),'application/json')}
@@ -589,6 +631,12 @@ document.addEventListener('click',function(ev){
   if(t.dataset.edit){state.date=t.dataset.edit;go('today');return}
   if(t.dataset.range){state.range=+t.dataset.range;render();return}
   if(t.dataset.ser){state.show[t.dataset.ser]=state.show[t.dataset.ser]?0:1;render();return}
+  if(t.dataset.ef){
+    var evv=+t.dataset.ef,nev=(state.days[state.date]||{}).ef===evv?null:evv;
+    mut(function(e){if(nev==null)delete e.ef;else e.ef=nev});
+    var bs=t.parentNode.querySelectorAll('button');
+    for(var j=0;j<bs.length;j++){var o=nev!=null&&+bs[j].dataset.ef===nev;bs[j].classList.toggle('on',o);bs[j].setAttribute('aria-pressed',o)}
+    return}
   if(t.id==='export'){doExport();return}
   if(t.id==='backup'){doBackup();return}
   if(t.id==='restorebtn'){document.getElementById('restore').click();return}
@@ -615,6 +663,8 @@ document.addEventListener('change',function(ev){if(ev.target.id==='restore'&&ev.
 document.addEventListener('input',function(ev){
   var t=ev.target;
   if(t.id==='sh'){var v=parseFloat(t.value.replace(',','.'));mut(function(e){if(isNaN(v)||v<0||v>24)delete e.sh;else e.sh=Math.round(v*4)/4})}
+  else if(t.id==='stp'){var sp=parseInt(t.value.replace(/[^0-9]/g,''),10);mut(function(e){if(isNaN(sp)||sp>200000)delete e.stp;else e.stp=sp})}
+  else if(t.id==='exm'){var xm=parseInt(t.value.replace(/[^0-9]/g,''),10);mut(function(e){if(isNaN(xm)||xm>1440)delete e.exm;else e.exm=xm})}
   else if(t.id==='ss'){var s=parseInt(t.value,10);mut(function(e){if(isNaN(s)||s<0||s>100)delete e.ss;else e.ss=s})}
   else if(t.id==='note'){var txt=t.value;mut(function(e){if(txt.trim())e.note=txt;else delete e.note})}
   else if(t.id==='tdate'){var dv=t.value;mutSettings(function(s){s.transplant=dv})}
